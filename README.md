@@ -1,1 +1,1 @@
-# AUB AI Assistant
+# General Q&A via Instruct GPT
