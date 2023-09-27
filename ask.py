@@ -12,7 +12,7 @@ def ask(input: str) -> str:
     completion = openai.Completion.create(
       model=llm_model,
       temperature=1,
-      max_tokens=250,
+      max_tokens=1000,
       top_p=1,
       frequency_penalty=0,
       presence_penalty=0,
