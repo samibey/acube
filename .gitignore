@@ -1,1 +1,4 @@
 chunks/*
+docs/*
+__pycache__/*
+tt.py
