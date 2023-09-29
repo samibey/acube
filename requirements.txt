@@ -4,4 +4,7 @@ uvicorn
 gradio
 pinecone-client
 plotly
+scipy
+openai.embeddings_utils
+
 
