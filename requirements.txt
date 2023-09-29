@@ -2,5 +2,6 @@ openai
 fastapi
 uvicorn
 gradio
-pinecone
+pinecone-client
+
 
