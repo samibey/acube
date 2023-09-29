@@ -1,5 +1,4 @@
-openai
-openai.embeddings_utils
+openai==0.29.0 
 fastapi
 uvicorn
 gradio
