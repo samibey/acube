@@ -1,10 +1,8 @@
 openai
+openai.embeddings_utils
 fastapi
 uvicorn
 gradio
 pinecone-client
-plotly
-scipy
-openai.embeddings_utils
 
 
