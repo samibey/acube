@@ -1,12 +1,14 @@
-import openai, pinecone, os, json, numpy as np
+import openai, pinecone, os, json
 from openai.embeddings_utils import get_embedding
+from fastapi import FastAPI
+import gradio as gr
 
 vec_dim = 1536
 MAX_TOKENS = 600
 TOP_K = 2
 
 # pinecone api key
-pc_api_key = os.environ["PINECONE_API_KEY"]
+pc_api_key = os.environ["PINECONE"]
 env = "gcp-starter"
 index_name = "aub"
 
@@ -29,7 +31,7 @@ embedding_model = "text-embedding-ada-002"
 llm_model = "gpt-3.5-turbo-instruct"
 
 # connect to openAI using api_key
-openai.api_key = os.environ["OPENAI_API_KEY"]
+openai.api_key = os.environ["OPENAI"]
 
 # rank offers
 def rank_chunks(index, text)->str:
@@ -45,24 +47,25 @@ def rank_chunks(index, text)->str:
   #print(r)
   context = ""
   i = int(r["matches"][0]["metadata"]["idx"])
-  print(i)
   j = int(r["matches"][1]["metadata"]["idx"])
-  print(j)
+  # print(str(i) + " " + str(j))
   ti = r["matches"][0]["metadata"]["text"]
   tj = r["matches"][1]["metadata"]["text"]
   if (i<j):
     context = ti + tj
   else:
     context = tj + ti
-  # print (ti)
-  # print (tj)
   # print (context)
   return(context)
 
-def qna(question, context, isCreative = True):
-    verbose = ""
+def qna(question, isCreative = True)->str:
+    context = rank_chunks(index, question)
+    
     if isCreative:
       verbose = "using as much details"
+    else:
+      verbose = ""
+      
     utext = f"""
     you are a helpful assistant who specializes in helping AUB,
     American University of Beirut, students regarding university
@@ -90,15 +93,12 @@ def qna(question, context, isCreative = True):
     #answer = answer.replace("\\n", "\n")
     return answer
 
-#q = "how can I be exempted from taking arabic cources?"
-#q = "what is the deadline to submit my transcript from previous school?"
-#q = "what is the capital of turkey?"
-#q = "how do I apply for housing on campus?"
+iface = gr.Interface(
+        fn=qna, 
+        inputs=gr.components.Textbox(label='Question'),
+        outputs=gr.components.Textbox(label='Answer'),
+        allow_flagging='never')
 
-q = "what is HIP?"
+app = FastAPI()
 
-context = rank_chunks(index, q)
-print ("--------------------------------------------")
-
-answer = qna (q, context)
-print(answer)
+app = gr.mount_gradio_app(app, iface, path='/')
