@@ -8,7 +8,7 @@ llm_model = "gpt-3.5-turbo-instruct"
 # Set your API key
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
-def ask(input: str) -> str:
+def qna(input: str) -> str:
     completion = openai.Completion.create(
       model=llm_model,
       temperature=1,
@@ -21,7 +21,7 @@ def ask(input: str) -> str:
     return completion.choices[0].text.lstrip()
 
 iface = gr.Interface(
-        fn=ask, 
+        fn=qna, 
         inputs=gr.components.Textbox(label='Question'),
         outputs=gr.components.Textbox(label='Answer'),
         allow_flagging='never')
