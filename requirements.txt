@@ -1,7 +1,7 @@
 openai
 plotly
 scipy
-sklearn
+scikit-learn
 fastapi
 uvicorn
 gradio
