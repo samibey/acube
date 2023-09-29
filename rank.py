@@ -5,9 +5,8 @@ vec_dim = 1536
 MAX_TOKENS = 600
 TOP_K = 2
 
-# dev pinecone
-#pc_api_key = "0c3c335b-0fb9-4794-98c5-224135f5f917"
-pc_api_key = os.environ["PINECONE_API_KEY"]
+# pinecone api key
+pc_api_key = os.environ["PINECONE"]
 env = "gcp-starter"
 index_name = "aub"
 
@@ -21,7 +20,6 @@ pinecone.init(
 index = pinecone.Index(index_name=index_name)
 
 #print(pinecone.describe_index(index_name))
-
 index.describe_index_stats()
 
 # embedding model
@@ -31,7 +29,8 @@ embedding_model = "text-embedding-ada-002"
 llm_model = "gpt-3.5-turbo-instruct"
 
 # connect to openAI using api_key
-openai.api_key = "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"
+openai.api_key = os.environ["OPENAI"]
+
 
 # rank offers
 def rank_chunks(index, text)->str:
