@@ -31,7 +31,6 @@ llm_model = "gpt-3.5-turbo-instruct"
 # connect to openAI using api_key
 openai.api_key = os.environ["OPENAI"]
 
-
 # rank offers
 def rank_chunks(index, text)->str:
   print("ranking chunks: " + text)
