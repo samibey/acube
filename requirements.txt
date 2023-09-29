@@ -3,5 +3,5 @@ fastapi
 uvicorn
 gradio
 pinecone-client
-
+plotly
 
