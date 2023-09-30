@@ -11,12 +11,11 @@ SOURCE = "./docs"
 TARGET = "./chunks"
 
 # pinecone environment
-# pc_api_key = "0c3c335b-0fb9-4794-98c5-224135f5f917"
-pc_api_key = os.environ["PINECONE_API_KEY"]
+pc_api_key = os.environ["PINECONE"]
 env = "gcp-starter"
 index_name = "aub"
 
-openai.api_key = os.environ["OPENAI_API_KEY"]
+openai.api_key = os.environ["OPENAI"]
 # -------------------------------------------------
 
 # returns today's date for vector date stamp
