@@ -6,7 +6,7 @@ import openai, os
 llm_model = "gpt-3.5-turbo-instruct"
 
 # Set your API key
-openai.api_key = os.environ["OPENAI_API_KEY"]
+openai.api_key = os.environ["OPENAI"]
 
 def ask(input: str) -> str:
     completion = openai.Completion.create(
@@ -32,4 +32,5 @@ app = FastAPI()
 # async def root():
 #     return 'acube app is running', 200
 
+# to run locally: uvivorn gpt:app --reload 
 app = gr.mount_gradio_app(app, iface, path='/')
