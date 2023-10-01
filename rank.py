@@ -9,7 +9,7 @@ TOP_K = 2
 
 # pinecone api key
 pc_api_key = os.environ["PINECONE"]
-env = "gcp-starter"
+env = "us-west1-gcp-free"
 index_name = "aub"
 
 # connect to pinecone database
