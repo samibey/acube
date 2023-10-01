@@ -6,13 +6,17 @@ from openai.embeddings_utils import get_embedding
 embedding_model = "text-embedding-ada-002"
 
 vec_dim = 1536
-CSIZE = 600
+CSIZE = 2000
 SOURCE = "./docs"
 TARGET = "./chunks"
+DOC = "career-hub.txt"
 
 # pinecone environment
-pc_api_key = os.environ["PINECONE"]
-env = "gcp-starter"
+pc_api_key = os.environ["PINECONE_QA"]
+# dev env
+# env = "gcp-starter"
+# QA env
+env = "us-west1-gcp-free"
 index_name = "aub"
 
 openai.api_key = os.environ["OPENAI"]
@@ -80,7 +84,7 @@ def partition_document(source, doc, target):
     # open the input file and read its content
     input_file = source + "/" + doc
     with open(input_file, "r") as f:
-        content = f.read()
+        content = f.read().rstrip()
     
     # split the content into lines using splitlines()
     lines = content.splitlines()
@@ -100,9 +104,9 @@ def partition_document(source, doc, target):
             ck_tx = ""
         
         # write the line to the output file and add its length to the size
-        f.write(line + "\n")
+        f.write(line + "\r")
         size += len(line)
-        ck_tx = ck_tx + line + "\n"
+        ck_tx = ck_tx + line + "\r"
         
         # if the size is greater than or equal to CSIZE, close the output file and reset the size
         if size >= CSIZE:
@@ -132,7 +136,7 @@ def partition_document(source, doc, target):
                 'refl': 'none',
                 'reft': 'text',
             }}"""
-        f.close()
+    f.close()
     ck_st = "[" + ck_st + "]"
     ck_di = ast.literal_eval(ck_st)
     return ck_di
@@ -153,11 +157,9 @@ index = pinecone.Index(index_name=index_name)
 
 # -------------------------------------------------
 
-di = partition_document(SOURCE, "a.txt", TARGET)
-#print(ck_di)
-#print(di[0])
-#res = add_doc(di[0])
-for i in range(1, len(di)):
+di = partition_document(SOURCE, DOC, TARGET)
+print(len(di))
+for i in range(0, len(di)):
     # insert object at index i
     res = add_doc(di[i])
     print(str(res) + ": " + str(i))

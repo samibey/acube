@@ -1,12 +1,12 @@
 import ast, json
 
-CSIZE = 600
+CSIZE = 800
 
 def partition_document(source, doc, target):
     # open the input file and read its content
     input_file = source + "/" + doc
     with open(input_file, "r") as f:
-        content = f.read()
+        content = f.read().rstrip()
     
     # split the content into lines using splitlines()
     lines = content.splitlines()
@@ -26,9 +26,9 @@ def partition_document(source, doc, target):
             ck_tx = ""
         
         # write the line to the output file and add its length to the size
-        f.write(line + "\n")
+        f.write(line + "\r")
         size += len(line)
-        ck_tx = ck_tx + line + "\n"
+        ck_tx = ck_tx + line + "\r"
         
         # if the size is greater than or equal to CSIZE, close the output file and reset the size
         if size >= CSIZE:
@@ -58,7 +58,7 @@ def partition_document(source, doc, target):
                 'refl': 'none',
                 'reft': 'text',
             }}"""
-        f.close()
+    f.close()
     #return f"{i} chunks were inserted"
     ck_st = "[" + ck_st + "]"
     ck_di = ast.literal_eval(ck_st)
@@ -66,8 +66,8 @@ def partition_document(source, doc, target):
 
 SOURCE = "./docs"
 TARGET = "./chunks"
-ck_di = partition_document(SOURCE, "a.txt", TARGET)
-#print(ck_di)
-#print(ck_di[0]["text"])
+DOC = "career-hub.txt"
+ck_di = partition_document(SOURCE, DOC, TARGET)
 
+#print(ck_di[2]["text"])
 print(len(ck_di))
