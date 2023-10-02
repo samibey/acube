@@ -1,4 +1,4 @@
-import openai, pinecone, os, json
+import openai, pinecone, os, json, datetime, time
 from openai.embeddings_utils import get_embedding
 from fastapi import FastAPI
 import gradio as gr
@@ -6,6 +6,7 @@ import gradio as gr
 vec_dim = 1536
 MAX_TOKENS = 600
 TOP_K = 2
+reqs = []
 
 # pinecone api key
 pc_api_key = os.environ["PINECONE"]
@@ -32,6 +33,34 @@ llm_model = "gpt-3.5-turbo-instruct"
 
 # connect to openAI using api_key
 openai.api_key = os.environ["OPENAI"]
+
+def get_datetime():
+  dt = datetime.datetime.now()
+  #dt_str = dt.strftime ("%d%H%M%S")
+  return dt
+
+def slowit():
+  dt = get_datetime()
+  if (len(reqs)<3):
+    #print("len(reqs)<3")
+    reqs.append(dt)
+    return dt
+  if (len(reqs)==3 and (reqs[2] - reqs[0]).total_seconds()<=60):
+    #print(f"(reqs[2] - reqs[0])<=60: {(reqs[2]-reqs[0]).total_seconds()}")
+    time.sleep(22)
+    dt=get_datetime()
+    reqs.append(dt)
+    reqs.pop(0)
+    return dt
+  if (len(reqs)>1 and (dt - reqs[2]).total_seconds()>60):
+    #print("(dt - reqs[2])>60")
+    reqs.clear()
+    reqs.append(dt)
+    return dt
+  # print("unknown condition")
+  # print (dt)
+  # print (reqs)
+  return dt
 
 # rank offers
 def rank_chunks(index, text)->str:
@@ -80,6 +109,7 @@ def qna(question, isCreative = True)->str:
     Question: {question}
     Answer: 
     """
+    dt = slowit()
     completion = openai.Completion.create(
       model=llm_model,
       temperature=1,
