@@ -6,7 +6,7 @@ from openai.embeddings_utils import get_embedding
 embedding_model = "text-embedding-ada-002"
 
 vec_dim = 1536
-CSIZE = 2000
+CSIZE = 20000
 SOURCE = "./docs"
 TARGET = "./chunks"
 DOC = "career-hub.txt"
