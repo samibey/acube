@@ -10,7 +10,7 @@ reqs = []
 
 # pinecone api key
 pc_api_key = os.environ["PINECONE"]
-env = "us-west1-gcp-free"
+env = "gcp-starter"
 index_name = "aub"
 
 # connect to pinecone database
@@ -67,10 +67,11 @@ def slowit():
 # rank offers
 def rank_chunks(index, text)->str:
   print("ranking chunks: " + text)
-  embedding = client.embeddings.create(
-                json.dumps(text),
-                engine=embedding_model
+  response = client.embeddings.create(
+                input=json.dumps(text),
+                model=embedding_model
               )
+  embedding = response.data[0].embedding
   r = index.query(vector=embedding,
                   top_k=TOP_K,
                   include_values=False,
@@ -111,7 +112,7 @@ def qna(question, isCreative = True)->str:
     Question: {question}
     Answer: 
     """
-    dt = slowit()
+    #dt = slowit()
     
     completion = client.completions.create(
       model=llm_model,
@@ -124,6 +125,8 @@ def qna(question, isCreative = True)->str:
     )
     answer = completion.choices[0].text.lstrip()
     #answer = answer.replace("\\n", "\n")
+    print(answer)
+    #answer = "hello world"
     return answer
 
 iface = gr.Interface(
@@ -134,4 +137,5 @@ iface = gr.Interface(
 
 app = FastAPI()
 
+# to run locally: uvicorn rank:app --reload 
 app = gr.mount_gradio_app(app, iface, path='/')

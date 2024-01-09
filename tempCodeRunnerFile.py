@@ -1,0 +1,1 @@
+uvicorn rank:app --reload 
