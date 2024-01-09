@@ -1,5 +1,5 @@
-import openai, pinecone, os, json, datetime, time
-from openai.embeddings_utils import get_embedding
+import pinecone, os, json, datetime, time
+from openai import OpenAI
 from fastapi import FastAPI
 import gradio as gr
 
@@ -32,7 +32,9 @@ embedding_model = "text-embedding-ada-002"
 llm_model = "gpt-3.5-turbo-instruct"
 
 # connect to openAI using api_key
-openai.api_key = os.environ["OPENAI"]
+client = OpenAI(
+   api_key=os.environ["OPENAI"],
+ )
 
 def get_datetime():
   dt = datetime.datetime.now()
@@ -65,7 +67,7 @@ def slowit():
 # rank offers
 def rank_chunks(index, text)->str:
   print("ranking chunks: " + text)
-  embedding = get_embedding(
+  embedding = client.embeddings.create(
                 json.dumps(text),
                 engine=embedding_model
               )
@@ -110,14 +112,15 @@ def qna(question, isCreative = True)->str:
     Answer: 
     """
     dt = slowit()
-    completion = openai.Completion.create(
+    
+    completion = client.completions.create(
       model=llm_model,
+      prompt = utext,
       temperature=1,
       max_tokens=MAX_TOKENS,
       top_p=1,
       frequency_penalty=0,
       presence_penalty=0,
-      prompt = utext,
     )
     answer = completion.choices[0].text.lstrip()
     #answer = answer.replace("\\n", "\n")
