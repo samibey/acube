@@ -2,7 +2,7 @@ import pinecone, os, json, datetime, time
 from openai import OpenAI
 from fastapi import FastAPI
 import gradio as gr
-
+## github
 vec_dim = 1536
 MAX_TOKENS = 600
 TOP_K = 2

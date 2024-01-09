@@ -10,7 +10,7 @@ llm_model = "gpt-3.5-turbo-instruct"
 client = OpenAI(
   api_key=os.environ["OPENAI"],
 )
-
+## github
 def ask(input: str) -> str:
     completion = client.completions.create(
       model=llm_model,

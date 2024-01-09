@@ -4,7 +4,7 @@ from openai.embeddings_utils import get_embedding
 
 # embedding model
 embedding_model = "text-embedding-ada-002"
-
+## github
 vec_dim = 1536
 CSIZE = 2000
 SOURCE = "./docs"
