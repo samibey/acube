@@ -1,4 +1,9 @@
 openai
+plotly
+scipy
+scikit-learn
 fastapi
 uvicorn
 gradio
+pinecone-client
+datetime
