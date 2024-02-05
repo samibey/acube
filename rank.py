@@ -1,4 +1,5 @@
-import pinecone, os, json, datetime, time
+from pinecone import Pinecone
+import os, json, datetime, time
 from openai import OpenAI
 from fastapi import FastAPI
 import gradio as gr
@@ -10,17 +11,14 @@ reqs = []
 
 # pinecone api key
 pc_api_key = os.environ["PINECONE"]
-env = "gcp-starter"
+#env = "gcp-starter"
 index_name = "aub"
 
 # connect to pinecone database
-pinecone.init(
-    api_key=pc_api_key,
-    environment= env
-)
+pc = Pinecone(api_key=pc_api_key)
 
 # connect to pinecone index
-index = pinecone.Index(index_name=index_name)
+index = pc.Index(index_name)
 
 #print(pinecone.describe_index(index_name))
 index.describe_index_stats()
@@ -42,28 +40,8 @@ def get_datetime():
   return dt
 
 def slowit():
-  dt = get_datetime()
-  if (len(reqs)<3):
-    #print("len(reqs)<3")
-    reqs.append(dt)
-    return dt
-  if (len(reqs)==3 and (reqs[2] - reqs[0]).total_seconds()<=60):
-    #print(f"(reqs[2] - reqs[0])<=60: {(reqs[2]-reqs[0]).total_seconds()}")
-    time.sleep(22)
-    dt=get_datetime()
-    reqs.append(dt)
-    reqs.pop(0)
-    return dt
-  if (len(reqs)>1 and (dt - reqs[2]).total_seconds()>60):
-    #print("(dt - reqs[2])>60")
-    reqs.clear()
-    reqs.append(dt)
-    return dt
-  # print("unknown condition")
-  # print (dt)
-  # print (reqs)
-  return dt
-
+  print ("anti spam")
+  
 # rank offers
 def rank_chunks(index, text)->str:
   print("ranking chunks: " + text)
@@ -104,7 +82,7 @@ def qna(question, isCreative = True)->str:
     related questions.
     Answer the question {verbose} only based on the context below.
     If the question is not related to the context below,
-    then answer 'This is not my specialty, please try again.'\n\n
+    then answer 'Please refer to the OSA webpage: https://www.aub.edu.lb/SAO/Pages/default.aspx'\n\n
     Context:
     {context} 
     
@@ -112,7 +90,8 @@ def qna(question, isCreative = True)->str:
     Question: {question}
     Answer: 
     """
-    #dt = slowit()
+    
+    #slowit()
     
     completion = client.completions.create(
       model=llm_model,
