@@ -1,9 +1,11 @@
-import openai, pinecone, os, numpy as np
+from pinecone import Pinecone
+from openai import OpenAI
+import os, numpy as np
 import json, uuid, ast, datetime, time
-from openai.embeddings_utils import get_embedding
 
 # embedding model
 embedding_model = "text-embedding-ada-002"
+
 ## github
 vec_dim = 1536
 CSIZE = 2000
@@ -11,15 +13,25 @@ SOURCE = "./docs"
 TARGET = "./chunks"
 DOC = "career-hub.txt"
 
-# pinecone environment
-pc_api_key = os.environ["PINECONE_QA"]
-# dev env
-# env = "gcp-starter"
-# QA env
-env = "us-west1-gcp-free"
-index_name = "aub"
+# pinecone api key
+pc_api_key = os.environ["PCNOS"]
+#env = "gcp-starter"
+index_name = "aub-ada-1536"
 
-openai.api_key = os.environ["OPENAI"]
+# connect to pinecone database
+pc = Pinecone(api_key=pc_api_key)
+
+# connect to pinecone index
+index = pc.Index(index_name)
+
+#print(pinecone.describe_index(index_name))
+print(index.describe_index_stats())
+
+# connect to openAI using api_key
+client = OpenAI(
+   api_key=os.environ["OPENAI"],
+ )
+
 # -------------------------------------------------
 
 # returns today's date for vector date stamp
@@ -62,7 +74,7 @@ def del_all(r):
         
 #upsert document in Pinecone
 def add_doc(di):
-  embedding = get_embedding(
+  embedding = client.embeddings.create(
                 json.dumps(di["text"]),
                 engine=embedding_model
               )
@@ -143,14 +155,14 @@ def partition_document(source, doc, target):
 
 # -------------------------------------------------
 
-# connect to pinecone database
-pinecone.init(
-    api_key=pc_api_key,
-    environment= env
-)
+# # connect to pinecone database
+# pinecone.init(
+#     api_key=pc_api_key,
+#     environment= env
+# )
 
-# connect to pinecone index
-index = pinecone.Index(index_name=index_name)
+# # connect to pinecone index
+# index = pinecone.Index(index_name=index_name)
 
 #print(pinecone.describe_index(index_name))
 #print(index.describe_index_stats())
@@ -163,5 +175,5 @@ for i in range(0, len(di)):
     # insert object at index i
     res = add_doc(di[i])
     print(str(res) + ": " + str(i))
-    time.sleep(22)
+    #time.sleep(22)
 
