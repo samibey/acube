@@ -11,7 +11,7 @@ vec_dim = 1536
 CSIZE = 2000
 SOURCE = "./docs"
 TARGET = "./chunks"
-DOC = "career-hub.txt"
+DOC = "CHSC-FAQ.txt"
 
 # pinecone api key
 pc_api_key = os.environ["PCNOS"]
@@ -74,9 +74,9 @@ def del_all(r):
         
 #upsert document in Pinecone
 def add_doc(di):
-  embedding = client.embeddings.create(
-                json.dumps(di["text"]),
-                engine=embedding_model
+  res = client.embeddings.create(
+                input=json.dumps(di["text"]),
+                model=embedding_model
               )
   ds = {
         "text": di["text"],
@@ -88,7 +88,7 @@ def add_doc(di):
         "date": get_date(),
         "dt": get_datetime()
       }
-  index.upsert([(uid(), embedding, ds),])
+  index.upsert([(uid(), res.data[0].embedding, ds),])
   return "success"
 
 # partition document in sourse into chunks inserted in target
