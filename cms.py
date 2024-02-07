@@ -4,10 +4,11 @@ import os, numpy as np
 import json, uuid, ast, datetime, time
 
 # embedding model
-embedding_model = "text-embedding-ada-002"
+#embedding_model = "text-embedding-ada-002"
+embedding_model = "text-embedding-3-large"
 
 ## github
-vec_dim = 1536
+vec_dim = 3072
 CSIZE = 2000
 SOURCE = "./docs"
 TARGET = "./chunks"
@@ -16,7 +17,7 @@ DOC = "orientation.txt"
 # pinecone api key
 pc_api_key = os.environ["PCNOS"]
 #env = "gcp-starter"
-index_name = "aub-ada-1536"
+index_name = "aub-v3l-3072"
 
 # connect to pinecone database
 pc = Pinecone(api_key=pc_api_key)
@@ -76,7 +77,8 @@ def del_all(r):
 def add_doc(di):
   res = client.embeddings.create(
                 input=json.dumps(di["text"]),
-                model=embedding_model
+                model=embedding_model,
+                dimensions=vec_dim
               )
   ds = {
         "text": di["text"],

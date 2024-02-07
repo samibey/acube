@@ -4,15 +4,15 @@ from openai import OpenAI
 from fastapi import FastAPI
 import gradio as gr
 ## github
-vec_dim = 1536
+vec_dim = 3072
 MAX_TOKENS = 600
 TOP_K = 2
 reqs = []
 
 # pinecone api key
-pc_api_key = os.environ["PINECONE"]
+pc_api_key = os.environ["PCNOS"]
 #env = "gcp-starter"
-index_name = "aub"
+index_name = "aub-v3l-3072"
 
 # connect to pinecone database
 pc = Pinecone(api_key=pc_api_key)
@@ -24,7 +24,8 @@ index = pc.Index(index_name)
 index.describe_index_stats()
 
 # embedding model
-embedding_model = "text-embedding-ada-002"
+#embedding_model = "text-embedding-ada-002"
+embedding_model = "text-embedding-3-large"
 
 # LLM model
 llm_model = "gpt-3.5-turbo-instruct"
@@ -47,7 +48,8 @@ def rank_chunks(index, text)->str:
   print("ranking chunks: " + text)
   response = client.embeddings.create(
                 input=json.dumps(text),
-                model=embedding_model
+                model=embedding_model,
+                dimensions=vec_dim
               )
   embedding = response.data[0].embedding
   r = index.query(vector=embedding,
@@ -61,6 +63,9 @@ def rank_chunks(index, text)->str:
   # print(str(i) + " " + str(j))
   ti = r["matches"][0]["metadata"]["text"]
   tj = r["matches"][1]["metadata"]["text"]
+  #print scores
+  print(str(r["matches"][0]["score"]))
+  print(str(r["matches"][1]["score"]))
   if (i<j):
     context = ti + tj
   else:
