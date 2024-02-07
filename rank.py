@@ -10,9 +10,9 @@ TOP_K = 2
 reqs = []
 
 # pinecone api key
-pc_api_key = os.environ["PINECONE"]
+pc_api_key = os.environ["PCNOS"]
 #env = "gcp-starter"
-index_name = "aub"
+index_name = "aub-ada-1536"
 
 # connect to pinecone database
 pc = Pinecone(api_key=pc_api_key)
