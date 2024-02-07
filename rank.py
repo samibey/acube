@@ -61,6 +61,9 @@ def rank_chunks(index, text)->str:
   # print(str(i) + " " + str(j))
   ti = r["matches"][0]["metadata"]["text"]
   tj = r["matches"][1]["metadata"]["text"]
+  #print scores
+  print(str(r["matches"][0]["score"]))
+  print(str(r["matches"][1]["score"]))
   if (i<j):
     context = ti + tj
   else:
