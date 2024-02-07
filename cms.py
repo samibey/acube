@@ -11,7 +11,7 @@ vec_dim = 1536
 CSIZE = 2000
 SOURCE = "./docs"
 TARGET = "./chunks"
-DOC = "CHSC-FAQ.txt"
+DOC = "orientation.txt"
 
 # pinecone api key
 pc_api_key = os.environ["PCNOS"]
