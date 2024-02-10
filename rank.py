@@ -62,13 +62,15 @@ def rank_chunks(index, text)->str:
   ti = r["matches"][0]["metadata"]["text"]
   tj = r["matches"][1]["metadata"]["text"]
   #print scores
-  print(str(r["matches"][0]["score"]))
-  print(str(r["matches"][1]["score"]))
+  print("i= " + str(i) + " " + r["matches"][0]["metadata"]["refd"] + ": " + str(r["matches"][0]["score"]))
+  print("j= " + str(j) + " " + r["matches"][1]["metadata"]["refd"] + ": " + str(r["matches"][1]["score"]))
   if (i<j):
-    context = ti + tj
+    context = ti + "\n\n" + tj
   else:
-    context = tj + ti
-  # print (context)
+    context = tj + "\n\n" + ti
+  print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+  print (context)
+  print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   return(context)
 
 def qna(question, isCreative = True)->str:
