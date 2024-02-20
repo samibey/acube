@@ -5,14 +5,17 @@ from fastapi import FastAPI
 import gradio as gr
 ## github
 vec_dim = 1536
-MAX_TOKENS = 600
-TOP_K = 2
+MAX_TOKENS = 500
+TOP_K = 1
 reqs = []
+
+no_answer = "no answer"
 
 # pinecone api key
 pc_api_key = os.environ["PCNOS"]
 #env = "gcp-starter"
-index_name = "aub-ada-1536"
+#index_name = "aub-ada-1536"
+index_name = "a3-ada-1536"
 
 # connect to pinecone database
 pc = Pinecone(api_key=pc_api_key)
@@ -27,12 +30,15 @@ index.describe_index_stats()
 embedding_model = "text-embedding-ada-002"
 
 # LLM model
-llm_model = "gpt-3.5-turbo-instruct"
+# llm_model = "gpt-3.5-turbo-instruct"
+llm_model = "gpt-3.5-turbo-1106"
 
 # connect to openAI using api_key
 client = OpenAI(
    api_key=os.environ["OPENAI"],
  )
+
+#---------------------------------------------
 
 def get_datetime():
   dt = datetime.datetime.now()
@@ -43,83 +49,112 @@ def slowit():
   print ("anti spam")
   
 # rank offers
-def rank_chunks(index, text)->str:
-  print("ranking chunks: " + text)
+def rank_vectors(text)->str:
+  print(f"ranking vectors: {text}")
   response = client.embeddings.create(
-                input=json.dumps(text),
+                input=text,
                 model=embedding_model
               )
-  embedding = response.data[0].embedding
-  r = index.query(vector=embedding,
+  ebs = response.data[0].embedding
+  r = index.query(vector=ebs,
                   top_k=TOP_K,
                   include_values=False,
                   include_metadata=True)
   #print(r)
-  context = ""
-  i = int(r["matches"][0]["metadata"]["idx"])
-  j = int(r["matches"][1]["metadata"]["idx"])
-  # print(str(i) + " " + str(j))
-  ti = r["matches"][0]["metadata"]["text"]
-  tj = r["matches"][1]["metadata"]["text"]
-  #print scores
-  print("i= " + str(i) + " " + r["matches"][0]["metadata"]["refd"] + ": " + str(r["matches"][0]["score"]))
-  print("j= " + str(j) + " " + r["matches"][1]["metadata"]["refd"] + ": " + str(r["matches"][1]["score"]))
-  if (i<j):
-    context = ti + "\n\n" + tj
-  else:
-    context = tj + "\n\n" + ti
+  context = r["matches"][0]["metadata"]["text"]
+  
   print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-  print (context)
+  x = r["matches"][0]["metadata"]["name"]
+  print(f"chunk: {x}")
+  #print (context)
   print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   return(context)
 
-def qna(question, isCreative = True)->str:
-    context = rank_chunks(index, question)
-    
-    if isCreative:
-      verbose = "using as much details"
-    else:
-      verbose = ""
-      
-    utext = f"""
-    you are a helpful assistant who specializes in helping AUB,
-    American University of Beirut, students regarding university
-    related questions.
-    Answer the question {verbose} only based on the context below.
-    If the question is not related to the context below,
-    then answer 'Please refer to the OSA webpage: https://www.aub.edu.lb/SAO/Pages/default.aspx'\n\n
-    Context:
-    {context} 
-    
-    
-    Question: {question}
-    Answer: 
-    """
-    
-    #slowit()
-    
-    completion = client.completions.create(
-      model=llm_model,
-      prompt = utext,
-      temperature=1,
-      max_tokens=MAX_TOKENS,
-      top_p=1,
-      frequency_penalty=0,
-      presence_penalty=0,
-    )
-    answer = completion.choices[0].text.lstrip()
-    #answer = answer.replace("\\n", "\n")
-    print(answer)
-    #answer = "hello world"
-    return answer
+# mapping LLM ignorance
+def check_words(words, sentence):
+  # Convert the sentence to lowercase
+  sentence = sentence.lower()
+  # Loop through each word in the list
+  for word in words:
+    # Convert the word to lowercase
+    word = word.lower()
+    # Check if the word is in the sentence
+    if word not in sentence:
+      # Return False if any word is missing
+      return False
+  # Return True if all words are present
+  return True
 
+# AI answering user's question
+def qna(question)->str:
+  context = rank_vectors(question)
+
+  # sp = "You are a help assistant."
+  sp = ""
+  context = f"""
+  \"\"\"
+  {context}
+  \"\"\"
+  """
+
+  up = f"""
+  {context}
+
+  assistant will carefully analyze the attached information.
+  assistant will avoid unnecessary justifications in his answer.
+  assistant answers the following question ONLY based on 
+  the attached info without using any external sources: 
+  \"{question}\".
+
+  if the attached info is NOT enough to answer user's question,
+  then assistant will be brief and answer only with \"no answer\".
+  """
+  print(up)
+  res = client.chat.completions.create(
+    model=llm_model,
+    messages=[
+      {
+        "role": "system",
+        "content": sp
+      },
+      {
+        "role": "user",
+        "content": up
+      }
+    ],
+    temperature=0.5,
+    max_tokens=MAX_TOKENS,
+    top_p=0.5,
+    frequency_penalty=0,
+    presence_penalty=0
+  )
+  # not provided in the attached information
+  #res
+  answer = res.choices[0].message.content.lstrip()
+  fa = (answer.lower() == no_answer)
+  lb = ['not', 'attached', 'information']
+  fb = check_words(lb, answer)
+  if (fa or fb):
+    answer = "Please refer to the OSA webpage: https://www.aub.edu.lb/SAO/Pages/default.aspx"
+  
+  return answer
+  
+  
 iface = gr.Interface(
-        fn=qna, 
-        inputs=gr.components.Textbox(label='Question'),
-        outputs=gr.components.Textbox(label='Answer'),
-        allow_flagging='never')
+       fn=qna, 
+       inputs=gr.components.Textbox(label='Question'),
+       outputs=gr.components.Textbox(label='Answer'),
+       allow_flagging='never')
 
 app = FastAPI()
 
 # to run locally: uvicorn rank:app --reload 
 app = gr.mount_gradio_app(app, iface, path='/')
+
+#-------------------------------------------------------
+
+# question = "who is the dean of student affairs ?"
+# question = "how much is 1+2?"
+
+# ans = qna(question)
+# print(ans)
