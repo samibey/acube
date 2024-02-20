@@ -109,7 +109,7 @@ def qna(question)->str:
   if the attached info is NOT enough to answer user's question,
   then assistant will be brief and answer only with \"no answer\".
   """
-  print(up)
+  # print(up)
   res = client.chat.completions.create(
     model=llm_model,
     messages=[
