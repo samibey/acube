@@ -124,7 +124,7 @@ def qna(question)->str:
     ],
     temperature=0.5,
     max_tokens=MAX_TOKENS,
-    top_p=0.5,
+    top_p=0.1,
     frequency_penalty=0,
     presence_penalty=0
   )
