@@ -5,11 +5,11 @@ import json, uuid, ast, datetime, time
 from prettytable import from_csv, PrettyTable
 
 # embedding model
-embedding_model = "text-embedding-ada-002"
-#embedding_model = "text-embedding-3-large"
+#embedding_model = "text-embedding-ada-002"
+embedding_model = "text-embedding-3-large"
 
 ## github
-vec_dim = 1536
+vec_dim = 1024
 CSIZE = 2000
 SOURCE = "./docs"
 TARGET = "./chunks"
@@ -33,7 +33,8 @@ i_dt    = 10
 pc_api_key = os.environ["PCNOS"]
 #env = "gcp-starter"
 #index_name = "aub-v3l-3072"
-index_name = "a3-ada-1536"
+#index_name = "a3-ada-1536"
+index_name = "a3-v3l-1024"
 
 # connect to pinecone database
 pc = Pinecone(api_key=pc_api_key)
@@ -95,7 +96,8 @@ def add_vec(di):
   print(f"adding vector for {name}")
   res = client.embeddings.create(
                 input=json.dumps(di["text"]),
-                model=embedding_model
+                model=embedding_model,
+                dimensions=vec_dim
               )
   index.upsert([(di["id"], res.data[0].embedding, di),])
   return "success"
@@ -302,7 +304,7 @@ def process_kbv():
   # id,file,old,refd,idx,wc,vid,refl,reft,date,dt
   
   with open(KBC) as fp:
-    mpt = from_csv(fp)
+    mpt = from_csv(fp, delimiter=',')
   
   trows = mpt.rows
   for tr in trows:

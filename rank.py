@@ -4,9 +4,10 @@ from openai import OpenAI
 from fastapi import FastAPI
 import gradio as gr
 ## github
-vec_dim = 1536
+vec_dim = 1024
 MAX_TOKENS = 500
-TOP_K = 1
+TOP_K = 3
+EPS = 4
 reqs = []
 
 no_answer = "no answer"
@@ -15,7 +16,8 @@ no_answer = "no answer"
 pc_api_key = os.environ["PCNOS"]
 #env = "gcp-starter"
 #index_name = "aub-ada-1536"
-index_name = "a3-ada-1536"
+#index_name = "a3-ada-1536"
+index_name = "a3-v3l-1024"
 
 # connect to pinecone database
 pc = Pinecone(api_key=pc_api_key)
@@ -27,7 +29,8 @@ index = pc.Index(index_name)
 index.describe_index_stats()
 
 # embedding model
-embedding_model = "text-embedding-ada-002"
+# embedding_model = "text-embedding-ada-002"
+embedding_model = "text-embedding-3-large"
 
 # LLM model
 # llm_model = "gpt-3.5-turbo-instruct"
@@ -47,13 +50,18 @@ def get_datetime():
 
 def slowit():
   print ("anti spam")
-  
+
+# calculate the % difference between 2 scores
+def score_diff(s1, s2):
+  return round(100*(s1-s2)/s1)
+
 # rank offers
 def rank_vectors(text)->str:
   print(f"ranking vectors: {text}")
   response = client.embeddings.create(
                 input=text,
-                model=embedding_model
+                model=embedding_model,
+                dimensions=vec_dim
               )
   ebs = response.data[0].embedding
   r = index.query(vector=ebs,
@@ -63,10 +71,23 @@ def rank_vectors(text)->str:
   #print(r)
   context = r["matches"][0]["metadata"]["text"]
   
+  s0 = r["matches"][0]["score"]
+  s1 = r["matches"][1]["score"]
+  s2 = r["matches"][2]["score"]
+  
+  # if score_diff(s0, s1) < EPS:
+  #   context = context + "\n" + r["matches"][1]["metadata"]["text"]
+    
+  # if score_diff(s0, s2) < EPS:
+  #   context = context + "\n" + r["matches"][2]["metadata"]["text"]
+    
   print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-  x = r["matches"][0]["metadata"]["name"]
-  print(f"chunk: {x}")
-  #print (context)
+  x0 = r["matches"][0]["metadata"]["name"]
+  x1 = r["matches"][1]["metadata"]["name"]
+  x2 = r["matches"][2]["metadata"]["name"]
+  print(f"chunk: {x0} {x1} {x2}")
+  print(f"scores: {s0} {s1} {s2}")
+  print (context)
   print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   return(context)
 
