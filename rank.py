@@ -87,7 +87,7 @@ def rank_vectors(text)->str:
   x2 = r["matches"][2]["metadata"]["name"]
   print(f"chunk: {x0} {x1} {x2}")
   print(f"scores: {s0} {s1} {s2}")
-  print (context)
+  #print (context)
   print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   return(context)
 
