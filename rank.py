@@ -28,6 +28,9 @@ oai = OpenAI(
 
 # answer = "Please refer to the OSA webpage: https://www.aub.edu.lb/SAO/Pages/default.aspx"
 
+def qna():
+       return ("hello qna")
+
 iface = gr.Interface(
        fn=qna, 
        inputs=gr.components.Textbox(label='Question'),
