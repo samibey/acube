@@ -7,9 +7,6 @@ from datetime import datetime
 from pymongo import MongoClient
 import cohere
 
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="cohere")
