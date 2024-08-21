@@ -167,11 +167,141 @@ def get_llm_context(mongo, vec_id):
 
   return text[start_context:end_context]
 
+###############################################################################
+def ask_llm(query, f_res):
+###############################################################################
+  # print(f"\nask_llm: {query}\n")
+
+  if query == "":
+    return "nothing in, nothing out."
+
+  scon = f'''
+  you are an AI assistant for students of AUB (American University of Beirut).
+  '''
+
+  ucon = ""
+  # unpack the tuple
+  for i, (index, score, document) in enumerate(f_res): 
+    ucon += f'''
+    "\n{document}\n"
+    '''
+
+  ucon += f'''
+  \n{query}\n
+  '''
+  # print("********************")
+  # print(ucon)
+  # print("********************")
+
+  completion = oai.chat.completions.create(
+  model=llm_model,
+  temperature=0.8,
+  max_tokens=max_tokens,
+  top_p=1,
+  frequency_penalty=0,
+  presence_penalty=0,
+  response_format={
+    "type": "text"
+  },
+  messages=[
+      {"role": "system", "content": scon},
+      {"role": "user", "content": ucon}
+    ]
+  )
+  r = completion.choices[0].message.content
+  print(f"total tokens: {completion.usage.total_tokens}\n")
+  return(r)
+
+
+###############################################################################
+def qna(query)->str:
+###############################################################################
+  print(f"QnA: {query}\n")
+
+  # Access the a3 database and logs collection
+  db = mongo.a3
+  logs = db.logs
+
+  # Define the log document to be inserted
+  log = {
+      "query": f"{query}",
+      "answer": "",
+      "dts": datetime.now().strftime('%y%m%d%H%M%S'),
+      "rrv": []
+  }
+  rrv = {
+          "vr": 1,
+          "vid": "",
+          "vbs": 1.0,
+          "vcs": 1.0,
+          "vidx": 0,
+          "type": "",
+          "d_name": ""
+        }
+
+  if query == "":
+    return "nothing in, nothing out."
+
+  query_vec = embed_text(query)
+
+  sv = search_similar_vectors(vectors, query_vec)
+  # print results
+  # for doc in sv:
+  #     print(f"{doc['_id']} score: {doc['score']:.5f} {doc['idx']:03d}\t{doc['doc_name']}")
+
+  res = rerank(co, query, sv)
+  # print results
+  for doc in res:
+    i = doc.index
+    print(f"Doc {i:03d} {sv[i]['_id']} {sv[i]['score']:.5f} -> {doc.relevance_score:.5f} {sv[i]['idx']:03d} {sv[i]['type']}\t{sv[i]['doc_name']}")
+    obj = {
+            'vr': i,
+            'vid': sv[i]['_id'],
+            'vbs': sv[i]['score'],
+            'vcs': doc.relevance_score,
+            'vidx': sv[i]['idx'],
+            'type': sv[i]['type'],
+            'd_name': sv[i]['doc_name']
+        }
+    log['rrv'].append(obj)
+
+  # check if there is no answer
+  if res[0].relevance_score < IDK_LIMIT:
+    return IDK
+
+  # print("+++++++++++++++++++++++++++++++++++++++++")
+  # print(res)
+
+  # f_res = [res[0]] + [item for item in res[1:] if item.relevance_score > RL]
+  f_res = [(res[0].index, res[0].relevance_score, get_llm_context(mongo, sv[res[0].index]['_id']))] + \
+  [(item.index, item.relevance_score, get_llm_context(mongo, sv[item.index]['_id'])) for item in res[1:] if item.relevance_score > RL]
+
+  
+  # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+  # print(f_res)
+  # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+  # for i, item in enumerate(f_res):
+  #   vec_id = sv[f_res[i].index]['_id']
+  #   # get the context
+  #   context = get_llm_context(mongo, vec_id)
+  #   f_res[i].document = context
+    
+  # add the answer to the log
+  # log['answer'] = r
+  # res = logs.insert_one(log)
+
+  # Print the ID of the inserted document
+  # print(f"logging : {res.inserted_id}")
+
+  ans = ask_llm(query, f_res)
+  # print(f"\nllm ans:\n {ans}\n")
+
+  return ans
 
 #------------------------------------------------------------------------------
 
-def qna(question="hello")->str:
-       return ("hello qna")
+# def qna(question="hello")->str:
+#        return ("hello qna")
 
 iface = gr.Interface(
        fn=qna, 
