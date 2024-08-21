@@ -6,4 +6,5 @@ fastapi
 uvicorn
 gradio
 pymongo
+cohere
 datetime
