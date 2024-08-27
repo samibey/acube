@@ -75,7 +75,7 @@ except Exception as e:
 db = mongo.a3
 docs = db.docs
 vectors = db.vectors
-qnas = db.qnas
+# qnas = db.qnas
 logs = db.logs
 
 #------------------------------------------------------------------------------
@@ -122,6 +122,10 @@ def rerank(co, query, similar_vectors, top_n=top_k):
   for doc in similar_vectors:
     rr_docs.append(doc['text'])
 
+  if (rr_docs == []):
+    print(">>>>>>> black hole\n")
+    return []
+    
   res = co.rerank(model="rerank-english-v3.0", query=query, documents=rr_docs, top_n=top_n, return_documents=True)
 
   # print the results
@@ -133,9 +137,11 @@ def rerank(co, query, similar_vectors, top_n=top_k):
 ###############################################################################
 def get_llm_context(mongo, vec_id):
 ###############################################################################
-  db = mongo.a3
-  docs = db.docs
-  vectors = db.vectors
+  # print("\n------- get_llm_context\n")
+  
+  # db = mongo.a3
+  #docs = db.docs
+  #vectors = db.vectors
 
   vec = vectors.find_one({'_id': vec_id})
   # print(f"get_llm_context: {vec['doc_name']}\t{vec['idx']}\t{vec['doc_id']}")
@@ -150,7 +156,7 @@ def get_llm_context(mongo, vec_id):
        # win_size = 500
        # win_step = 200
 
-  pvec = db.docs.find_one({'_id': vec['doc_id']})
+  pvec = docs.find_one({'_id': vec['doc_id']})
   #print(pvec['name'])
   text = pvec['text']
 
@@ -216,7 +222,7 @@ def qna(query)->str:
   print(f"QnA: {query}\n")
 
   # Access the a3 database and logs collection
-  db = mongo.a3
+  # db = mongo.a3
   logs = db.logs
 
   # Define the log document to be inserted
