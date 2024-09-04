@@ -1,8 +1,8 @@
-import os, json, datetime, time
+import os, json
 from openai import OpenAI
 from fastapi import FastAPI
 import gradio as gr
-
+from bson import ObjectId 
 from datetime import datetime
 from pymongo import MongoClient
 import cohere
@@ -13,17 +13,25 @@ warnings.filterwarnings("ignore", category=UserWarning, module="cohere")
 
 llm_model       = "gpt-4o-mini-2024-07-18"
 embedding_model = "text-embedding-3-large"
+llm_temp        = 0.8
 vec_dim         = 1024
-max_tokens      = 2000
+q_vec_dim       = 256
+max_tokens      = 10000
 top_k           = 10
 reqs            = []
+IDK             = "idk"
 IDK             = "Please refer to the OSA webpage: https://www.aub.edu.lb/SAO/Pages/default.aspx"
+NINO            = "nothing in, nothing out."
 IDK_LIMIT       = 0.1
 RL              = 0.5
+Q_LIMIT         = 0.9
+Q_ONE           = 0.999
 
 win_size = 400      # sliding window size
 win_step = 200      # sliding window step
 context_mult = 4    # context: 2*context_mult*win_size
+
+# system="You are AUB student assistant with access to some AUB documents and information. You use the information you are given to provide advice."
 
 # connect to openAI
 oai = OpenAI(
@@ -39,6 +47,17 @@ def embed_text(text):
                 dimensions=vec_dim
               )
   return res.data[0].embedding
+
+###############################################################################
+def embed_query(query):
+###############################################################################
+  res = oai.embeddings.create(
+                input=query,
+                model=embedding_model,
+                dimensions=q_vec_dim
+              )
+  return res.data[0].embedding
+
 #------------------------------------------------------------------------------
 
 res = embed_text("apple is juicy and delicious")
@@ -75,7 +94,7 @@ except Exception as e:
 db = mongo.a3
 docs = db.docs
 vectors = db.vectors
-# qnas = db.qnas
+qnas = db.qnas
 logs = db.logs
 
 #------------------------------------------------------------------------------
@@ -139,10 +158,6 @@ def get_llm_context(mongo, vec_id):
 ###############################################################################
   # print("\n------- get_llm_context\n")
   
-  # db = mongo.a3
-  #docs = db.docs
-  #vectors = db.vectors
-
   vec = vectors.find_one({'_id': vec_id})
   # print(f"get_llm_context: {vec['doc_name']}\t{vec['idx']}\t{vec['doc_id']}")
   idx = vec['idx']
@@ -152,7 +167,7 @@ def get_llm_context(mongo, vec_id):
   # print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
   type = vec['type']
-  # if type == 'chunk':
+  # if type == 'chunk': # many win_size
        # win_size = 500
        # win_step = 200
 
@@ -176,7 +191,7 @@ def ask_llm(query, f_res):
   # print(f"\nask_llm: {query}\n")
 
   if query == "":
-    return "nothing in, nothing out."
+    return NINO
 
   scon = f'''
   you are an AI assistant for students of AUB (American University of Beirut).
@@ -198,7 +213,7 @@ def ask_llm(query, f_res):
 
   completion = oai.chat.completions.create(
   model=llm_model,
-  temperature=0.8,
+  temperature=llm_temp,
   max_tokens=max_tokens,
   top_p=1,
   frequency_penalty=0,
@@ -217,34 +232,206 @@ def ask_llm(query, f_res):
 
 
 ###############################################################################
+def llm_best_match(query, sq)->str:
+###############################################################################
+  print(f">>>>>>>> llm_best_match: {query}\n")
+
+  if query == "":
+    return NINO
+
+  scon = f'''
+  you are an AI assistant for students at AUB (American University of Beirut).
+  '''
+
+  ucon = ""
+
+  q_str = ""
+  for i, o in enumerate(sq):
+    q_str += f"""
+    {i+1} - {o['query']}\n
+    """
+
+
+  ucon += f"""
+  given the following labeled queries:
+
+  {q_str}
+
+  which of them is a semantic match of the query "{query}"?
+
+  if there is a match, provide only the label of the matched query, otherwise respond with 0.
+
+  answer is:
+  """
+
+  # print("********************")
+  # print(ucon)
+  # print("********************")
+
+  while True:
+    completion = oai.chat.completions.create(
+      model=llm_model,
+      temperature=llm_temp,
+      max_tokens=max_tokens,
+      top_p=1,
+      frequency_penalty=0,
+      presence_penalty=0,
+      response_format={
+        "type": "text"
+      },
+      messages=[
+          {"role": "system", "content": scon},
+          {"role": "user", "content": ucon}
+        ]
+    )
+    r = completion.choices[0].message.content
+    print(f">>>>>>>>>{r}<<<<<<<<")
+    if len(r) <= 1:
+      break
+
+  # print(f"total tokens: {completion.usage.total_tokens}\n")
+
+  r_i = int(r[0])
+  if r_i == 0:
+    x = ""
+  else:
+    x = sq[r_i-1]['query']
+
+  print(f"llm_best_match: {r}\tans: {x}\n")
+
+  return(r[0])
+
+
+###############################################################################
+def search_similar_queries(query_vec, top_k=5):
+###############################################################################
+    vectors = qnas
+
+    # query_vec = embed_text(query)
+
+    # Define the Atlas Search pipeline.
+    pipeline = [
+        {
+            '$vectorSearch': {
+                'index': 'query_index',
+                'path': 'emb',
+                'queryVector': query_vec,
+                'numCandidates': 100,
+                'limit': top_k
+            }
+        }, {
+            '$project': {
+                '_id': 1,
+                'query': 1,
+                'answer': 1,
+                'score': {
+                    '$meta': 'vectorSearchScore'
+                }
+            }
+        }
+    ]
+
+    # Execute the search pipeline.
+    results = list(vectors.aggregate(pipeline))
+
+    return results
+
+
+###############################################################################
+def check_query(query, query_vec)->(str, str): # type: ignore
+###############################################################################
+
+  sq = search_similar_queries(query_vec)
+
+  # filter most similar queries
+  f_sq = [item for item in sq if item['score'] > Q_LIMIT]
+
+  if not f_sq:
+    return "", ""
+
+  # print("Results from search_similar_queries:")
+  # print(sq)
+
+  # check for an exact match
+  top_vec = sq[0]['score']
+  if top_vec > Q_ONE:
+    return sq[0]['answer'], sq[0]['_id']
+
+  # print results
+  # for doc in f_sq:
+  #     print(f"{doc['_id']} score: {doc['score']:.5f} {doc['query']}")
+
+  # find best semantic match via LLM
+  idx_s = llm_best_match(query, f_sq)
+
+  idx = int(idx_s)
+  if idx == 0:
+    return "", ""
+
+  answer = f_sq[idx-1]['answer']
+  id = f_sq[idx-1]['_id']
+
+  return answer, id
+
+
+###############################################################################
 def qna(query)->str:
 ###############################################################################
   print(f"QnA: {query}\n")
-
-  # Access the a3 database and logs collection
-  # db = mongo.a3
-  logs = db.logs
 
   # Define the log document to be inserted
   log = {
       "query": f"{query}",
       "answer": "",
       "dts": datetime.now().strftime('%y%m%d%H%M%S'),
+	    "qna_id": "",
       "rrv": []
   }
   rrv = {
           "vr": 1,
           "vid": "",
-          "vbs": 1.0,
+          "vds": 1.0,
           "vcs": 1.0,
           "vidx": 0,
           "type": "",
           "d_name": ""
         }
 
+  # define the qna document
+  qna_doc = {
+      "query": query,
+      "answer": "",
+      "dts": datetime.now().strftime('%y%m%d%H%M%S'),
+      "state": ""
+  }
+  
   if query == "":
-    return "nothing in, nothing out."
+    return NINO
 
+  query_vec = embed_query(query)
+
+  # check if query exists
+  answer, id = check_query(query, query_vec)
+
+  # if query exists, log & return answer
+  if answer != "":
+    log['answer'] = answer
+    log['qna_id'] = id
+    res = logs.insert_one(log)
+    print(f"logging : {res.inserted_id}")
+    return answer
+
+  ############ main pipeline ############
+  
+  # define the qna document
+  qna_doc = {
+      "query": query,
+      "answer": "",
+      "dts": datetime.now().strftime('%y%m%d%H%M%S'),
+      "emb": query_vec,
+      "state": ""
+  }
+  
   query_vec = embed_text(query)
 
   sv = search_similar_vectors(vectors, query_vec)
@@ -257,47 +444,48 @@ def qna(query)->str:
   for doc in res:
     i = doc.index
     print(f"Doc {i:03d} {sv[i]['_id']} {sv[i]['score']:.5f} -> {doc.relevance_score:.5f} {sv[i]['idx']:03d} {sv[i]['type']}\t{sv[i]['doc_name']}")
-    obj = {
-            'vr': i,
-            'vid': sv[i]['_id'],
-            'vbs': sv[i]['score'],
-            'vcs': doc.relevance_score,
-            'vidx': sv[i]['idx'],
-            'type': sv[i]['type'],
-            'd_name': sv[i]['doc_name']
+    obj = {                             # re-ranked-vector
+            'vr': i,                    # vector ranking (not rr)
+            'vid': sv[i]['_id'],        # vector object_id
+            'vds': sv[i]['score'],      # vector dense similarity
+            'vcs': doc.relevance_score, # vector cross similarity
+            'vidx': sv[i]['idx'],       # vector chunk idx w/r parent doc
+            'type': sv[i]['type'],      # contingency 4 multi chunking 
+            'd_name': sv[i]['doc_name'] # parent document name
         }
     log['rrv'].append(obj)
 
   # check if there is no answer
   if res[0].relevance_score < IDK_LIMIT:
+    ans = IDK
+    qna_doc['answer'] = ans
+    res = qnas.insert_one(qna_doc)
+    log['qna_id'] = res.inserted_id
+    log['answer'] = ans
+    res = logs.insert_one(log)
+    # Print the ID of the inserted document
+    print(f"logging : {res.inserted_id}")
     return IDK
-
-  # print("+++++++++++++++++++++++++++++++++++++++++")
-  # print(res)
 
   # f_res = [res[0]] + [item for item in res[1:] if item.relevance_score > RL]
   f_res = [(res[0].index, res[0].relevance_score, get_llm_context(mongo, sv[res[0].index]['_id']))] + \
   [(item.index, item.relevance_score, get_llm_context(mongo, sv[item.index]['_id'])) for item in res[1:] if item.relevance_score > RL]
 
-  
-  # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-  # print(f_res)
-  # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-  # for i, item in enumerate(f_res):
-  #   vec_id = sv[f_res[i].index]['_id']
-  #   # get the context
-  #   context = get_llm_context(mongo, vec_id)
-  #   f_res[i].document = context
     
-  # add the answer to the log
-  # log['answer'] = r
-  # res = logs.insert_one(log)
-
-  # Print the ID of the inserted document
-  # print(f"logging : {res.inserted_id}")
-
   ans = ask_llm(query, f_res)
   # print(f"\nllm ans:\n {ans}\n")
+  
+  qna_doc['answer'] = ans
+  res = qnas.insert_one(qna_doc)
+  log['qna_id'] = res.inserted_id
+  log['answer'] = ans
+  
+  # add the answer to the log
+  log['answer'] = ans
+  res = logs.insert_one(log)
+
+  # Print the ID of the inserted document
+  print(f"logging : {res.inserted_id}")
 
   return ans
 
